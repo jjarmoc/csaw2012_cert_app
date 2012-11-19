@@ -1,0 +1,36 @@
+!!!
+%html
+	%head
+		%title Certificate Manager
+		%link(rel="stylesheet" href="/css/styles.css")  
+	%body
+		#header
+			%h1 CSAW Certificate Manager
+		#wrapper
+			#nav
+				%ol
+					%a(href="/")
+						%li Home
+					%a(href="/about")
+						%li About
+					%a(href="/cert/dir")
+						%li Directory
+					%a(href="/cert/request")
+						%li Request Cert
+			#content
+				=yield
+			#side_bar
+				%h1 Welcome
+				%p
+					Logged in as:
+					%br
+					=h @user.name 
+				%p 
+					Member since:
+					%br
+					=h @user.created
+			#footer
+				%p 
+					Certificate Manager Created for 
+					%a(href="https://csawctf.poly.edu/")CSAW 2012 CTF.
+					Not intended for production use.

@@ -1,0 +1,28 @@
+%h1 Certificate Request
+%p
+	Complete the form below to request a certificate.  Please be patient while your .p12 certificate is generated.
+#stylized(class= "form")
+	%form{:action => "/cert/generate", :method => "post", :id => "form"}
+		%h1
+			Certificate Request Form
+		#item
+			%label{:for => "name"} 
+				Name:
+				%span(class="small")
+					Username for your certificate.
+			%input{:type => "text", :name => "name", :class => "text"}
+		#item
+			%label{:for => "pw"} 
+				Passphrase:
+				%span(class="small")
+					Choose a passphrase to protect your .p12	
+			%input{:type => "password", :name => "pw", :class => "text"}
+		#item
+			%label{:for => "confpw"} 
+				Confirm Pass:
+				%span(class="small")
+					Confirm your passphrase
+			%input{:type => "password", :name => "confpw", :class => "text"}
+		%input{:type => "Submit", :value => "Request Cert", :class => "button", :onClick => "this.value = 'Generating certificate, please wait...'"}
+
+			

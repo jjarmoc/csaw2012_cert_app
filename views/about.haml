@@ -1,0 +1,35 @@
+%h1 About this application
+%p
+	Welcome
+	=h @user.name
+	!
+%p
+	Strong authentication, authorization, and transport integrity can be difficult to achieve.  Thankfully,
+	%a(href="http://en.wikipedia.org/wiki/Mutual_authentication") mutual authentication
+	can help with all these challenges.  By requesting a client certificate during the SSL/TLS handshake, we can authenticate the client's identity while also improving the end-to-end intergrity of the encrypted session.  Additional complexity arises in generating and distributing certificates in a scalable fashion.
+%p
+	This application is an attempt at solving those problems.  It generates and distributes SSL/TLS client authentication certificates and keys in a password-protected PKCS 12 (.p12) file, while creating a searchable directory of public keys and their mappings to users.  Hopefully this will pave the way for broader adoption of S/MIME encrypted email, and mutually authenticated HTTPS applications which rely on these certificates.
+%h2	Usage
+%p
+	Using this application is simple.  To generate an authentication certificate, just navigate to the 
+	%a(href="/cert/request") Request Cert
+	page.  Complete the form by providing a username of your choosing and a password to protect your .p12.  Click submit, and wait while the system generates a keypair and delivers your .p12.  You can import it into your browser (using your password) and visit the site again to confirm you're identified as the appropriate user.
+%p
+	We've designed the system to generate keys as quickly as possible without compromising security.  This even involved some customizations to OpenSSL!
+%h2 Security
+%p
+	We generate only 2048-bit RSA keys with SHA256 signatures.  In plain terms, this is military-grade encryption, stronger than what's used by most banks and e-commerce sites, so you can be assured it's secure.  
+%p
+	The strength of these keys and signatures makes factoring the public key impractical.  In fact, 
+	%a(href="http://en.wikipedia.org/wiki/RSA_Factoring_Challenge")RSA once offered $200,000 to anyone who could factor RSA-2048,
+	and no one came forward!  We're also immune to attacks like 
+	%a(href="http://en.wikipedia.org/wiki/Collision_(computer_science)") Hash Collision.
+%p
+	For the strongest authorization possible, we compare your identity to the entire certificate/public key, not just the name.  This means that even someone with an identically named certificate, signed by our CA, would not be authenticated.  A valid user must present the exact certificate, which means they also have to have the corresponding private key.  
+%p
+	Once your keypair is created, only the public key is stored on the server.  Even if someone were able to compromise our server, they wouldn't be able to compromise your private key.
+%p 
+	Pretty cool, eh?
+%h2 The Challenge
+%p
+	We're so confident of this system's security, that we've made this early version available.  If you can authenticate as the 'admin' user, fame and glory will be yours (or maybe just the flag).
