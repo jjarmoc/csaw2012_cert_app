@@ -4,6 +4,8 @@ An intentionally vulnerable ruby/rack SSL/TLS Client Certificate application.  G
 
 Authenticate as 'admin' to obtain the flag.
 
+The code is running at https://csaw.offenseindepth.com/ for the next week or so.
+
 ## History
 
 This was used as a challenge in NYU Poly's CSAW CTF 2012.  7 of 15 competing teams were able to solve it.
