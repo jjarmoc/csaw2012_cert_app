@@ -12,8 +12,8 @@ This was used as a challenge in NYU Poly's CSAW CTF 2012.  7 of 15 competing tea
 
 ## Solution
 
-There's a writeup https://github.com/jjarmoc/csaw2012_cert_app/blob/master/solution/writeup.txt
-and an exploit https://github.com/jjarmoc/csaw2012_cert_app/blob/master/solution/Solver.rb
+There's a [writeup](https://github.com/jjarmoc/csaw2012_cert_app/blob/master/solution/writeup.md)
+and an [exploit](https://github.com/jjarmoc/csaw2012_cert_app/blob/master/solution/Solver.rb)
 
 ## Requirements
 
