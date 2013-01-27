@@ -4,7 +4,7 @@ An intentionally vulnerable ruby/rack SSL/TLS Client Certificate application.  G
 
 Authenticate as 'admin' to obtain the flag.
 
-The code is running at https://csaw.offenseindepth.com/ for the next week or so.
+The code is running at https://csaw.offenseindepth.com/ for the time being (I'll probably down it soon though..)
 
 ## History
 
