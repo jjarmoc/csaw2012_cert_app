@@ -8,7 +8,7 @@ Maintanence.rb - This script ran hourly during the CTF.  It verifies the admin k
 
 Writeup.txt - that's this file.  I'm going to try to explain the vulnerability, how the exploit works, and how this sort of issue might appear in the file.  
 
-=== The Vuln ===
+## The Vuln
 So, where's the vuln?
 
 Well, if you look at the code and play with the app, you should quickly see that it allows users to create client certificates which they can then use to authenticate.  I did my best to ensure that input we take from the user is handled safely, and I don't believe there's any traditional web vulns in this app (though I'd love to hear from anyone who finds any!)
@@ -16,6 +16,7 @@ Well, if you look at the code and play with the app, you should quickly see that
 Without web vulns, we're left with the crypto bits.  It seems like there's a good deal of code around that functionality, doesn't it?
 
 Digging around a bit, we see that the default route (which loads the index page) is as follows;
+'''ruby
     get '/' do
     	if (@authenticated == false)	
      		haml :noauth
@@ -25,11 +26,12 @@ Digging around a bit, we see that the default route (which loads the index page)
       		haml :index 
         end
     end
+'''
 
 So there's three cases.  An unauth'd user sees the :noauth page (this corresponds to /views/noauth.haml). If a user is auth'd and their name is "admin", the see theflag.haml.  Otherwise (they're auth'd, but not admin) they see index.haml.  So in essence; auth as admin and we'll see the flag.
 
 So, how does auth occur?  There's a helper that's called before each route is invoked that handles it.
-
+'''ruby
 	before do
 		@client_cert = request.env['SSL_CLIENT_CERT'] ? request.env['SSL_CLIENT_CERT'] : nil
 		@user = User.find_by_cert(@client_cert) ? User.find_by_cert(@client_cert) : nil
@@ -41,6 +43,7 @@ So, how does auth occur?  There's a helper that's called before each route is in
 
         @user.accessed()
 	end
+'''
 
 Here we're grabbing any provided client certificate from the rack environment, and assigning it to @client_cert.  If there's no cert, this is nil.  We then search for this cert (the entire cert, not just a CN, etc.) in our User's DB and assign the return value to @user (nil if no user)  From there we check if there's a user.  If not, we set @authenticated to false and set @user to a dummy user object.  Otherwise, we just call the .accessed() method on the user in question (which simply updates their last accessed time in the DB)
 
@@ -52,10 +55,13 @@ So if we can't control the name of generated users in an exploitable fashion, wh
 
 This leaves the crypto as our sole (hopefully) vuln.  Let's look at how certs are generated.
 
-Again in the /cert/generate route, we see that after a few sanity checks (username is specified, and there's not an existing user with this name, etc.) we end up with the following call;
+Again in the /cert/generate route, we see that after a few sanity checks (username is specified, and there's not an existing user with this name, etc.) we end up with the following call
+'''ruby
 	user = User.generate(params[:name], params[:pw])
+'''
 
-In /lib/User.rb, we see the code for the User.generate function;
+In /lib/User.rb, we see the code for the User.generate function
+'''ruby
 	def self.generate(name = "", pw = nil)
 		@@db = Connection.new.db('CertStore').collection('Users')
 		@@ca = CA.new()
@@ -63,10 +69,11 @@ In /lib/User.rb, we see the code for the User.generate function;
 		user.genkeys(pw)
 		return user
 	end
+'''
 This is fairly straightforward.  We create a user and then call user.genkeys passing along the password to use in protecting the .p12.  
 
 user.genkeys writes the user to the db, and creates a .p12 keypair signed by ca.genp12.  It then extracts the public key and writes it to the database.
-
+'''ruby
 	def genkeys(pw = nil)
 		@@db = Connection.new.db('CertStore').collection('Users')
 		new_user = { :name => @name, :created_on => @created, :last_access => @created}
@@ -75,7 +82,7 @@ user.genkeys writes the user to the db, and creates a .p12 keypair signed by ca.
 		@cert = @p12.certificate.to_s
 		@@db.update( { :_id => @user_id }, '$set' => { :pubkey => @cert} )
 	end
-
+'''
 The user's p12 is stored only for the duration of that initial session, and returned to the requesting user.
 
 Everything looks good so far, but let's dig a little more into the keypair generation.  Ca#genp12 is defined in Ca.rb.  Most of this function just assigned the certificate and key values to their corresponding objects, but near the start we see these two lines;
@@ -113,7 +120,7 @@ Essentially, this class just caches primes in a DB.  Given that (back in Ca.rb) 
 
 And there's the vuln.
 
-== RSA Basics ==
+## RSA Basics
 
 What?  How is that a vulnerability?
 
@@ -126,14 +133,14 @@ The security of RSA stems from the difficulty of factoring large prime numbers (
 
 So, if factoring is out, where do we go?
 
-== Shared Primes ==
+## Shared Primes
 Recall that we have a 1 in 20 shot at getting the same prime value of p for our keys due to the was that Prime class caches.  This means that a lot of keys are going to share primes.  Factoring keys is hard, but if we have duplicates there's another attack that comes in to play.  It's known as the 'shared factors attack.'
 
 Calculating p and q given n is hard, but if we have two values (n1 and n2) such that p1=p2, we can easily determine the value of p, as well as q1 and q2.  Since semi-prime numbers (like n1 and n2) each have only two prime factors, we know that any shared divisor is going to be a factor of both.  This shared factor can be quickly determined by checking the greatest common denominator of n1 and n2; gcd(n1, n2) = p1 = p2.  There's lots of ways to do this, but one of the best known is the Euclidean algorithm (http://en.wikipedia.org/wiki/Euclidean_algorithm)  Once we have the shared factor p, we can divide to find the other factor that isn't shared.  So; q1 = n1/p and q2 = n2/p.
 
 There's a really awesome explanation of this attack online at http://www.loyalty.org/~schoen/rsa/ so I'm not going to attempt to explain it again.  If the math interests you, check that out.
 
-== The exploit == 
+## The exploit
 
 So with that in mind, our exploit (in /solution/Solver.rb) simply creates an account for our use, then logs in and fetches the public key of our victim user (admin in this scenario).  We then repeatedly generate keys, and check for a common factor between them and the admin cert's n value.  If we have a common factor, we call it p and calculate admin's q (q = n/p).  We then have everything we need to build admin's private key.
 
@@ -141,9 +148,12 @@ OpenSSL doesn't include the ability to create a key from p and q.  But recall th
 
 There are a few other ways to do this, but they're fundamentally not much different.  Instead of gcd(admin_n1, test_n2) we could have just tried dividing admin's n by our two factors (and if it divides evenly, we've recovered the first factor).  Alternately, we could do the whole challenge by using already existing public keys (created by other teams perhaps) which are available in the directory.  gcd() works there too.  However you slice it, the first step is to recover the shared key, then divide to calculate the other, and then build a private key for admin which we use to log in.
 
-Once we log in with our recover private key for admin, we've got the flag.  For CSAW the flag was "key{BeSureToMindYourPsAndQs}"
+Once we log in with our recover private key for admin, we've got the flag.  For CSAW the flag was 
+'''
+key{BeSureToMindYourPsAndQs}
+'''
 
-== Real World ==
+## Real World
 If this example seems a bit contrived, it's because it is.  It's highly unusual to cache values of one of our primes, and constrain their possibilities so tightly.  I suppose there'a a chance a well-meaning developer could do something like this in a misguided attempt at making key generation faster, but it's probably not too likely.  Anyone with any business working on key generation at this level should be aware that re-using primes is a bad idea.  Still, stranger things have happened.
 
 What I really intended in this example was for it to be a simplified version of what might occur when a system lacks enough entropy to generate sufficiently random primes.  Such a system probably still wouldn't have a 1 in 20 reuse affinity like we see here, but that makes it much easier to attack our system in a reasonable time (a 1 in a million reuse would mean generating far more keys to find a shared factor).  
@@ -152,5 +162,5 @@ Not long ago, an interesting paper was released that showed such low-entropy key
 
 This is potential a problem for embedded systems which can't use common sources of entropy (disk, keyboard and mouse input, etc) and may frequently generate keys on their first boot.  Recent reports have claimed this is a a problem in some Cisco gear (http://packetstormsecurity.com/files/119363/Cisco-RV120W-RV220W-Weak-RSA-Key-Generation.html) which fits the model of a system where'd I'd expect key generation to be more difficult.
 
-== That's it! == 
+## That's it!
 I hope you enjoyed this writeup, the challenge, and hopefully learned something.  Feel free to get in touch with me on twitter (@jjarmoc) if you feel so inclined.
