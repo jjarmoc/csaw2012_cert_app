@@ -118,7 +118,7 @@ end
 
 So when a prime is initialized, the argument to the constructor is an ID.  This ID is used to query a database and if there's a result, the corresponding value is returned.  If there's no such ID, we create a 1024 bit prime from OpenSSL::BN.generate_prime(1024), store this in the DB corredponding to this ID, and return it.
 
-Essentially, this class just caches primes in a DB.  Given that ([back in Ca.rb](https://github.com/jjarmoc/csaw2012_cert_app/blob/master/lib/Ca.rb#L82)) we're calling rand(20) this class will return a prime, with a 1 in 20 chance of returning one that's already been returned before.
+Essentially, this class just caches primes in a DB.  Given that ([back in Ca.rb](https://github.com/jjarmoc/csaw2012_cert_app/blob/master/lib/Ca.rb#L82)) we're calling rand(20) this class will return a prime, with a 1 in 20 chance of returning one that was used in a specific prior call (like when admin was generated).
 
 And there's the vuln.
 
